@@ -68,21 +68,17 @@ static int copy_stream(FILE *in, const char *stream_name) {
 	/* Sized by BUFFER_SIZE for potentially large, efficient I/O operations. */
 	static unsigned char buffer[BUFFER_SIZE];
 	size_t bytes_read;
-	size_t bytes_written;
-	size_t chunk_written;
-
 	while ((bytes_read = fread(buffer, 1, sizeof(buffer), in)) > 0) {
-		chunk_written = 0;
-		while (chunk_written < bytes_read) {
-			bytes_written = fwrite(buffer + chunk_written, 1, bytes_read - chunk_written, stdout);
-			if (bytes_written == 0) {
-				/* fwrite returns 0 if count was > 0 and an error occurred before any items were written. */
-				/* If count was 0, it also returns 0, but that's not an error. */
-				/* Here, (bytes_read - chunk_written) is always > 0. */
+		/* Attempt to write the entire buffer in one operation. */
+		/* Check if all bytes were written successfully. */
+		if (fwrite(buffer, 1, bytes_read, stdout) != bytes_read) {
+			/* Handle EPIPE (broken pipe) specially, e.g., `see file | head`. */
+			/* This is expected behavior when the receiving end closes first. */
+			if (errno != EPIPE) {
 				fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
 				return 1;
 			}
-			chunk_written += bytes_written;
+			return 0; /* Exit gracefully if pipe was closed by the receiver. */
 		}
 	}
 
