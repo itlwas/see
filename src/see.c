@@ -133,6 +133,12 @@ int main(int argc, char *argv[]) {
 
 	platform_setup();
 
+	static unsigned char outbuf[BUFFER_SIZE];
+	if (setvbuf(stdout, (char*)outbuf, _IOFBF, sizeof(outbuf)) != 0) {
+		/* If setting custom stdout buffer fails, proceed with default buffering. */
+		/* This is non-critical. A warning could be logged here. */
+	}
+
 	/*
 	 * Argument parsing:
 	 * Special options -h/--help and -v/--version take precedence.
