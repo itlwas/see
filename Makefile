@@ -1,14 +1,10 @@
-.PHONY: all clean
+.PHONY: build clean
 CC = gcc
 CFLAGS = -std=c89 -D_FILE_OFFSET_BITS=64 -Wall -Wextra -O3 -s
-ifeq ($(OS),Windows_NT)
-	TARGET=see.exe
-else
-	TARGET=see
-endif
+OUT = see$(if $(filter Windows_NT,$(OS)),.exe,)
 SRC = src/see.c
-all: $(TARGET)
-$(TARGET): $(SRC)
+build: $(OUT)
+$(OUT): $(SRC)
 	$(CC) $(CFLAGS) -o $@ $<
 clean:
-	rm -f $(TARGET)
+	rm -f $(OUT)
