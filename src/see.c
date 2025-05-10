@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN /* Exclude rarely-used stuff from Windows headers */
@@ -38,6 +39,7 @@ static void platform_setup(void) {
 #else
 	/* For non-Windows systems, rely on system/terminal locale settings. */
 	/* No specific setup needed here for standard behavior. */
+	signal(SIGPIPE, SIG_IGN);
 	(void)0; /* Explicitly a no-op for clarity. */
 #endif
 }
@@ -69,16 +71,20 @@ static int copy_stream(FILE *in, const char *stream_name) {
 	static unsigned char buffer[BUFFER_SIZE];
 	size_t bytes_read;
 	while ((bytes_read = fread(buffer, 1, sizeof(buffer), in)) > 0) {
-		/* Attempt to write the entire buffer in one operation. */
-		/* Check if all bytes were written successfully. */
-		if (fwrite(buffer, 1, bytes_read, stdout) != bytes_read) {
-			/* Handle EPIPE (broken pipe) specially, e.g., `see file | head`. */
-			/* This is expected behavior when the receiving end closes first. */
-			if (errno != EPIPE) {
-				fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
-				return 1;
+		size_t written_total = 0;
+		while (written_total < bytes_read) {
+			size_t written = fwrite(buffer + written_total, 1, bytes_read - written_total, stdout);
+			if (written == 0) {
+				/* Handle EPIPE (broken pipe) specially, e.g., `see file | head`. */
+				/* This is expected behavior when the receiving end closes first. */
+				/* Also handles other write errors. */
+				if (errno != EPIPE) {
+					fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
+					return 1; /* Actual write error */
+				}
+				return 0; /* Broken pipe, exit gracefully */
 			}
-			return 0; /* Exit gracefully if pipe was closed by the receiver. */
+			written_total += written;
 		}
 	}
 
