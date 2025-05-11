@@ -1,8 +1,7 @@
 /*
- * see - A minimal, cross-platform 'cat' implementation.
- * Aims for high performance, small binary size, and wide compatibility.
- * Reads files sequentially and writes their content to standard output.
- * Handles binary data correctly.
+ * see - Minimal, cross-platform file content display utility.
+ * High performance sequential file reader with binary data support.
+ * Optimized for speed, minimal size, and broad compatibility.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,51 +10,47 @@
 #include <signal.h>
 
 #ifndef EPIPE
-#define EPIPE 32 /* Standard error code for Broken pipe */
+#define EPIPE 32 /* Broken pipe error code */
 #endif
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN /* Exclude rarely-used stuff from Windows headers */
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <io.h>   /* For _setmode, _fileno */
-#include <fcntl.h> /* For _O_BINARY */
+#include <io.h>
+#include <fcntl.h>
 #endif
 
-#define PROG_NAME "see"     /* Program name for messages */
-#define VERSION   "v1.0"   /* Program version, updated to reflect C89 changes */
-#define BUFFER_SIZE (64 * 1024) /* I/O buffer size (64KB) for efficient reads/writes */
+#define PROG_NAME "see"
+#define VERSION   "v1.0"
+#define BUFFER_SIZE (64 * 1024) /* 64KB for optimal I/O performance */
 
-/* Platform-specific setup */
+/* Configure platform-specific I/O settings */
 static void platform_setup(void) {
 #ifdef _WIN32
-	/* Attempt to set console output to UTF-8 on Windows. */
-	/* This aids in displaying non-ASCII characters if the console supports it. */
+	/* Set UTF-8 console output and binary mode for stdin/stdout */
 	SetConsoleOutputCP(CP_UTF8);
 
-	/* Ensure stdin/stdout are in binary mode on Windows. */
-	/* This prevents CR/LF translation and other text-mode transformations. */
 	int fd = _fileno(stdin);
-	if (fd != -1) { /* If stdin is a valid stream */
+	if (fd != -1) {
 		if (_setmode(fd, _O_BINARY) == -1) {
 			fprintf(stderr, "%s: stdin: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
 	fd = _fileno(stdout);
-	if (fd != -1) { /* If stdout is a valid stream */
+	if (fd != -1) {
 		if (_setmode(fd, _O_BINARY) == -1) {
 			fprintf(stderr, "%s: stdout: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
 			exit(EXIT_FAILURE);
 		}
 	}
 #else
-	/* For non-Windows systems, rely on system/terminal locale settings. */
-	/* No specific setup needed here for standard behavior. */
+	/* Ignore SIGPIPE to handle broken pipe gracefully */
 	signal(SIGPIPE, SIG_IGN);
 #endif
 }
 
-/* Display usage information to stdout. */
+/* Display usage information */
 static void usage(void) {
     static const char *usage_text =
         "Usage: %s [OPTION]... [FILE]...\n"
@@ -72,19 +67,16 @@ static void usage(void) {
     exit(EXIT_SUCCESS);
 }
 
-/* Display version information to stdout. */
+/* Display version information */
 static void version(void) {
 	printf("%s %s\n", PROG_NAME, VERSION);
 }
 
-/*
- * Copy data from input stream 'in' to standard output.
- * 'stream_name' is used for error messages (e.g., filename or "stdin").
- * Returns 0 on success, 1 on error.
+/* Copy data from input stream to stdout
+ * Returns 0 on success, 1 on error
  */
 static int copy_stream(FILE *in, const char *stream_name) {
-	/* Static buffer: avoids repeated stack allocation, improves cache locality. */
-	/* Sized by BUFFER_SIZE for potentially large, efficient I/O operations. */
+	/* Static buffer for improved cache locality and reduced allocations */
 	static unsigned char buffer[BUFFER_SIZE];
 	size_t bytes_read;
 	while ((bytes_read = fread(buffer, 1, sizeof(buffer), in)) > 0) {
@@ -92,14 +84,12 @@ static int copy_stream(FILE *in, const char *stream_name) {
 		while (written_total < bytes_read) {
 			size_t written = fwrite(buffer + written_total, 1, bytes_read - written_total, stdout);
 			if (written == 0) {
-				/* Handle EPIPE (broken pipe) specially, e.g., `see file | head`. */
-				/* This is expected behavior when the receiving end closes first. */
-				/* Also handles other write errors. */
+				/* Handle broken pipe gracefully */
 				if (errno != EPIPE) {
 					fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
-					return 1; /* Actual write error */
+					return 1;
 				}
-				return 0; /* Broken pipe, exit gracefully */
+				return 0;
 			}
 			written_total += written;
 		}
@@ -109,14 +99,11 @@ static int copy_stream(FILE *in, const char *stream_name) {
 		fprintf(stderr, "%s: read error on %s: %s\n", PROG_NAME, stream_name, strerror(errno));
 		return 1;
 	}
-	/* Output errors on stdout are checked by fflush(stdout) in main. */
 	return 0;
 }
 
-/*
- * Process a single file path or standard input.
- * 'path' is the file path, or NULL or "-" for stdin.
- * Returns 0 on success, 1 on error.
+/* Process a file or stdin
+ * Returns 0 on success, 1 on error
  */
 static int process_path(const char *path) {
 	FILE *input_file;
@@ -126,42 +113,35 @@ static int process_path(const char *path) {
 		return copy_stream(stdin, "stdin");
 	}
 
-	input_file = fopen(path, "rb"); /* Open in binary read mode ("b" is critical on Windows). */
+	input_file = fopen(path, "rb");
 	if (!input_file) {
 		fprintf(stderr, "%s: %s: %s\n", PROG_NAME, path, strerror(errno));
 		return 1;
 	}
 
 	if (copy_stream(input_file, path) != 0) {
-		status = 1; /* Error occurred during copy_stream. */
-		/* Continue to fclose the file. */
+		status = 1;
 	}
 
 	if (fclose(input_file) != 0) {
 		fprintf(stderr, "%s: %s: close error: %s\n", PROG_NAME, path, strerror(errno));
-		status = 1; /* Mark error; overrides previous success if any. */
+		status = 1;
 	}
 	return status;
 }
 
 int main(int argc, char *argv[]) {
 	int i;
-	int overall_rc = 0; /* Overall return code: 0 for success, 1 for any failure. */
+	int overall_rc = 0;
 	static unsigned char outbuf[BUFFER_SIZE];
 
 	platform_setup();
 
 	if (setvbuf(stdout, (char*)outbuf, _IOFBF, sizeof(outbuf)) != 0) {
-		/* If setting custom stdout buffer fails, proceed with default buffering. */
-		/* This is non-critical. A warning could be logged here. */
+		/* Non-critical: proceed with default buffering */
 	}
 
-	/*
-	 * Argument parsing:
-	 * Special options -h/--help and -v/--version take precedence.
-	 * If found anywhere, they are actioned, and the program exits.
-	 * This simple approach avoids complex option parsing for a minimal tool.
-	 */
+	/* Simple argument parsing: -h/--help and -v/--version take precedence */
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
 			usage();
@@ -174,36 +154,25 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (argc == 1) {
-		/* No arguments: process standard input. */
+		/* No arguments: process stdin */
 		overall_rc |= process_path(NULL);
 	} else {
-		/* Process each argument as a file. argv[0] is the program name. */
-		/* If -h/-v were present, we would have exited already. */
+		/* Process each file argument */
 		for (i = 1; i < argc; ++i) {
 			overall_rc |= process_path(argv[i]);
 		}
 	}
 
-	/*
-	 * Ensure all buffered output to stdout is written and check for errors.
-	 * EPIPE (broken pipe) is common (e.g., `see file | head`) and typically
-	 * not considered an error for `see` itself, so it's ignored.
-	 */
+	/* Flush stdout and check for errors (ignore EPIPE) */
 	if (fflush(stdout) != 0) {
 		if (errno != EPIPE) {
 			fprintf(stderr, "%s: flush error on stdout: %s\n", PROG_NAME, strerror(errno));
-			overall_rc = 1; /* Indicate failure. */
+			overall_rc = 1;
 		}
 	}
 
-	/*
-	 * Attempt to flush stderr as well, though errors are less common
-	 * and harder to report if stderr itself is broken.
-	 * If an error occurs here and stdout was fine, still report failure.
-	 */
+	/* Flush stderr (silently handle errors) */
 	if (fflush(stderr) != 0) {
-		/* Silently ignore stderr flush errors to avoid recursive error reporting. */
-		/* However, ensure the main return code reflects an issue if not already set. */
 		if (overall_rc == 0) {
 			overall_rc = 1;
 		}
