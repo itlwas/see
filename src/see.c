@@ -52,7 +52,6 @@ static void platform_setup(void) {
 	/* For non-Windows systems, rely on system/terminal locale settings. */
 	/* No specific setup needed here for standard behavior. */
 	signal(SIGPIPE, SIG_IGN);
-	(void)0; /* Explicitly a no-op for clarity. */
 #endif
 }
 
