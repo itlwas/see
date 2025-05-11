@@ -10,6 +10,10 @@
 #include <errno.h>
 #include <signal.h>
 
+#ifndef EPIPE
+#define EPIPE 32 /* Standard error code for Broken pipe */
+#endif
+
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN /* Exclude rarely-used stuff from Windows headers */
 #include <windows.h>
