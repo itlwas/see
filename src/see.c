@@ -48,15 +48,21 @@ static void platform_setup(void) {
 #endif
 }
 
-/* Display usage information to stderr. */
+/* Display usage information to stdout. */
 static void usage(void) {
-	fprintf(stderr,
-		"Usage: %s [OPTION]... [FILE]...\n"
-		"Concatenate FILE(s) to standard output.\n"
-		"With no FILE, or when FILE is -, read standard input.\n\n"
-		"  -h, --help     display this help and exit\n"
-		"  -v, --version  output version information and exit\n",
-		PROG_NAME);
+    static const char *usage_text =
+        "Usage: %s [OPTION]... [FILE]...\n"
+        "Concatenate FILE(s) to standard output.\n"
+        "With no FILE, or when FILE is -, read standard input.\n\n"
+        "Options:\n"
+        "  %-2s, %-15s %s\n"
+        "  %-2s, %-15s %s\n";
+    fprintf(stdout, usage_text,
+        PROG_NAME,
+        "-h", "--help",    "display this help",
+        "-v", "--version", "output version information"
+    );
+    exit(EXIT_SUCCESS);
 }
 
 /* Display version information to stdout. */
