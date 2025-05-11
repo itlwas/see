@@ -34,11 +34,19 @@ static void platform_setup(void) {
 
 	/* Ensure stdin/stdout are in binary mode on Windows. */
 	/* This prevents CR/LF translation and other text-mode transformations. */
-	if (_fileno(stdin) != -1) {
-		_setmode(_fileno(stdin), _O_BINARY);
+	int fd = _fileno(stdin);
+	if (fd != -1) { /* If stdin is a valid stream */
+		if (_setmode(fd, _O_BINARY) == -1) {
+			fprintf(stderr, "%s: stdin: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 	}
-	if (_fileno(stdout) != -1) {
-		_setmode(_fileno(stdout), _O_BINARY);
+	fd = _fileno(stdout);
+	if (fd != -1) { /* If stdout is a valid stream */
+		if (_setmode(fd, _O_BINARY) == -1) {
+			fprintf(stderr, "%s: stdout: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 	}
 #else
 	/* For non-Windows systems, rely on system/terminal locale settings. */
