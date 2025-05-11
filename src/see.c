@@ -145,11 +145,9 @@ int main(int argc, char *argv[]) {
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
 			usage();
-			return EXIT_SUCCESS;
 		}
 		if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
 			version();
-			return EXIT_SUCCESS;
 		}
 	}
 
