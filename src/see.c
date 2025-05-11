@@ -130,10 +130,10 @@ static int process_path(const char *path) {
 int main(int argc, char *argv[]) {
 	int i;
 	int overall_rc = 0; /* Overall return code: 0 for success, 1 for any failure. */
+	static unsigned char outbuf[BUFFER_SIZE];
 
 	platform_setup();
 
-	static unsigned char outbuf[BUFFER_SIZE];
 	if (setvbuf(stdout, (char*)outbuf, _IOFBF, sizeof(outbuf)) != 0) {
 		/* If setting custom stdout buffer fails, proceed with default buffering. */
 		/* This is non-critical. A warning could be logged here. */
