@@ -79,17 +79,19 @@ static int copy_stream(FILE *in, const char *stream_name) {
 	/* Static buffer for improved cache locality and reduced allocations */
 	static unsigned char buffer[BUFFER_SIZE];
 	size_t bytes_read;
+	size_t written_total;
+	size_t written;
 	while ((bytes_read = fread(buffer, 1, sizeof(buffer), in)) > 0) {
-		size_t written_total = 0;
+		written_total = 0;
 		while (written_total < bytes_read) {
-			size_t written = fwrite(buffer + written_total, 1, bytes_read - written_total, stdout);
+			written = fwrite(buffer + written_total, 1, bytes_read - written_total, stdout);
 			if (written == 0) {
 				/* Handle broken pipe gracefully */
-				if (errno != EPIPE) {
-					fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
-					return 1;
+				if (errno == EPIPE) {
+					return 0;
 				}
-				return 0;
+				fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
+				return 1;
 			}
 			written_total += written;
 		}
