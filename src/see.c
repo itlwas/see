@@ -173,9 +173,7 @@ int main(int argc, char *argv[]) {
 
 	/* Flush stderr (silently handle errors) */
 	if (fflush(stderr) != 0) {
-		if (overall_rc == 0) {
-			overall_rc = 1;
-		}
+		overall_rc = 1;
 	}
 
 	return (overall_rc == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
