@@ -139,6 +139,7 @@ static int process_path(const char *path) {
 }
 
 int main(int argc, char *argv[]) {
+	int files_processed = 0; /* Track if any files were processed */
 	int i;
 	int overall_rc = 0;
 	static unsigned char outbuf[BUFFER_SIZE];
@@ -149,24 +150,25 @@ int main(int argc, char *argv[]) {
 		/* Non-critical: proceed with default buffering */
 	}
 
-	/* Simple argument parsing: -h/--help and -v/--version take precedence */
+	/* Process command-line arguments */
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
 			usage();
 		}
-		if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+		else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
 			version();
+			/* Version flag implies successful exit */
+			return EXIT_SUCCESS;
+		}
+		else {
+			overall_rc |= process_path(argv[i]);
+			files_processed = 1;
 		}
 	}
 
-	if (argc == 1) {
-		/* No arguments: process stdin */
+	/* Process stdin if no files specified or only flags were given */
+	if (!files_processed) {
 		overall_rc |= process_path(NULL);
-	} else {
-		/* Process each file argument */
-		for (i = 1; i < argc; ++i) {
-			overall_rc |= process_path(argv[i]);
-		}
 	}
 
 	/* Flush stdout and check for errors (ignore EPIPE) */
