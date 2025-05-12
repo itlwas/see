@@ -1,7 +1,7 @@
 /*
  * see - Minimal, cross-platform file content display utility.
  * High performance sequential file reader with binary data support.
- * Optimized for speed, minimal size, and broad compatibility.
+ * Optimized for speed, minimal size, and broad compatibility (C89).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,94 +10,92 @@
 #include <signal.h>
 
 #ifndef EPIPE
-#define EPIPE 32 /* Broken pipe error code */
+#define EPIPE 32 /* POSIX/standard value may vary; define fallback */
 #endif
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <io.h>
-#include <fcntl.h>
+#include <windows.h> /* SetConsoleOutputCP */
+#include <io.h>      /* _setmode, _fileno */
+#include <fcntl.h>   /* _O_BINARY */
 #endif
 
 #define PROG_NAME "see"
 #define VERSION   "v1.0"
-#define BUFFER_SIZE (64 * 1024) /* 64KB for optimal I/O performance */
+#define BUFFER_SIZE (64 * 1024) /* 64KB: common optimal size for disk I/O */
 
-/* Configure platform-specific I/O settings */
+/* Configure platform-specific settings for console and I/O streams. */
 static void platform_setup(void) {
 #ifdef _WIN32
-	/* Set UTF-8 console output and binary mode for stdin/stdout */
+	/* Ensure UTF-8 output on Windows console. */
 	SetConsoleOutputCP(CP_UTF8);
 
-	int fd = _fileno(stdin);
-	if (fd != -1) {
-		if (_setmode(fd, _O_BINARY) == -1) {
-			fprintf(stderr, "%s: stdin: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
-			exit(EXIT_FAILURE);
-		}
+	/* Set stdin/stdout to binary mode to prevent CRLF translation. */
+	if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
+		fprintf(stderr, "%s: stdin: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
+		exit(EXIT_FAILURE);
 	}
-	fd = _fileno(stdout);
-	if (fd != -1) {
-		if (_setmode(fd, _O_BINARY) == -1) {
-			fprintf(stderr, "%s: stdout: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
-			exit(EXIT_FAILURE);
-		}
+	if (_setmode(_fileno(stdout), _O_BINARY) == -1) {
+		fprintf(stderr, "%s: stdout: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
+		exit(EXIT_FAILURE);
 	}
 #else
-	/* Ignore SIGPIPE using sigaction */
+	/* On POSIX, ignore SIGPIPE. Write errors (like EPIPE) are handled explicitly. */
 	struct sigaction sa;
 	memset(&sa, 0, sizeof(struct sigaction));
 	sa.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &sa, NULL) == -1) {
-		fprintf(stderr, "%s: sigaction failed to ignore SIGPIPE: %s\n", PROG_NAME, strerror(errno));
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "%s: failed to ignore SIGPIPE: %s\n", PROG_NAME, strerror(errno));
+		/* Non-fatal, continue execution but signal handling might be unreliable. */
+		/* Consider exiting if strict POSIX behavior is critical. */
 	}
 #endif
 }
 
-/* Display usage information */
+/* Display usage information and exit successfully. */
 static void usage(void) {
     static const char *usage_text =
         "Usage: %s [OPTION]... [FILE]...\n"
         "Concatenate FILE(s) to standard output.\n"
         "With no FILE, or when FILE is -, read standard input.\n\n"
         "Options:\n"
-        "  %-2s, %-15s %s\n"
-        "  %-2s, %-15s %s\n";
-    fprintf(stdout, usage_text,
-        PROG_NAME,
-        "-h", "--help",    "display this help",
-        "-v", "--version", "output version information"
-    );
+        "  -h, --help     display this help\n"
+        "  -v, --version  output version information\n";
+    fprintf(stdout, usage_text, PROG_NAME);
     exit(EXIT_SUCCESS);
 }
 
-/* Display version information */
+/* Display version information and exit successfully. */
 static void version(void) {
 	printf("%s %s\n", PROG_NAME, VERSION);
+	exit(EXIT_SUCCESS);
 }
 
-/* Copy data from input stream to stdout
- * Returns 0 on success, 1 on error
+/*
+ * Copy data from input stream to stdout using a fixed-size buffer.
+ * Handles write errors, including EPIPE (broken pipe) gracefully.
+ * Returns 0 on success, 1 on read/write error (excluding EPIPE).
  */
 static int copy_stream(FILE *in, const char *stream_name) {
-	/* Static buffer for improved cache locality and reduced allocations */
+	/* Static buffer minimizes stack usage and allocation overhead. */
 	static unsigned char buffer[BUFFER_SIZE];
 	size_t bytes_read;
 	size_t written_total;
 	size_t written;
+
 	while ((bytes_read = fread(buffer, 1, sizeof(buffer), in)) > 0) {
 		written_total = 0;
+		/* Loop handles potential partial writes. */
 		while (written_total < bytes_read) {
 			written = fwrite(buffer + written_total, 1, bytes_read - written_total, stdout);
 			if (written == 0) {
-				/* Handle broken pipe gracefully */
+				/* fwrite returns 0 on error. Check errno. */
 				if (errno == EPIPE) {
-					return 0;
+					/* Broken pipe: reader closed connection. Not an error for 'see'. */
+					return 0; /* Treat as success */
 				}
 				fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
-				return 1;
+				return 1; /* Indicate failure */
 			}
 			written_total += written;
 		}
@@ -105,17 +103,19 @@ static int copy_stream(FILE *in, const char *stream_name) {
 
 	if (ferror(in)) {
 		fprintf(stderr, "%s: read error on %s: %s\n", PROG_NAME, stream_name, strerror(errno));
-		return 1;
+		return 1; /* Indicate failure */
 	}
-	return 0;
+
+	return 0; /* Success */
 }
 
-/* Process a file or stdin
- * Returns 0 on success, 1 on error
+/*
+ * Open and process a single file path, or stdin if path is NULL or "-".
+ * Returns 0 on success, 1 on error (file open, read, write, close).
  */
 static int process_path(const char *path) {
 	FILE *input_file;
-	int status = 0;
+	int status = 0; /* Assume success initially */
 
 	if (path == NULL || strcmp(path, "-") == 0) {
 		return copy_stream(stdin, "stdin");
@@ -124,41 +124,41 @@ static int process_path(const char *path) {
 	input_file = fopen(path, "rb");
 	if (!input_file) {
 		fprintf(stderr, "%s: %s: %s\n", PROG_NAME, path, strerror(errno));
-		return 1;
+		return 1; /* Indicate failure */
 	}
 
 	if (copy_stream(input_file, path) != 0) {
-		status = 1;
+		status = 1; /* Record failure */
 	}
 
 	if (fclose(input_file) != 0) {
 		fprintf(stderr, "%s: %s: close error: %s\n", PROG_NAME, path, strerror(errno));
-		status = 1;
+		status = 1; /* Record failure */
 	}
+
 	return status;
 }
 
 int main(int argc, char *argv[]) {
-	int files_processed = 0; /* Track if any files were processed */
-	int i;
+	int files_processed = 0;
+	int i;                   /* C89 requires loop counter declaration at block start */
 	int overall_rc = 0;
+	/* stdout buffer for potential performance improvement. */
 	static unsigned char outbuf[BUFFER_SIZE];
 
 	platform_setup();
 
 	if (setvbuf(stdout, (char*)outbuf, _IOFBF, sizeof(outbuf)) != 0) {
-		/* Non-critical: proceed with default buffering */
+		/* Non-critical: proceed with default buffering. */
+		/* fprintf(stderr, "%s: warning: could not set stdout buffer\n", PROG_NAME); */
 	}
 
-	/* Process command-line arguments */
 	for (i = 1; i < argc; ++i) {
 		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-			usage();
+			usage(); /* Exits */
 		}
 		else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-			version();
-			/* Version flag implies successful exit */
-			return EXIT_SUCCESS;
+			version(); /* Exits */
 		}
 		else {
 			overall_rc |= process_path(argv[i]);
@@ -166,22 +166,20 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	/* Process stdin if no files specified or only flags were given */
 	if (!files_processed) {
-		overall_rc |= process_path(NULL);
+		overall_rc |= process_path(NULL); /* NULL indicates stdin */
 	}
 
-	/* Flush stdout and check for errors (ignore EPIPE) */
 	if (fflush(stdout) != 0) {
-		if (errno != EPIPE) {
+		if (errno != EPIPE) { /* Ignore broken pipe, it's handled in copy_stream */
 			fprintf(stderr, "%s: flush error on stdout: %s\n", PROG_NAME, strerror(errno));
-			overall_rc = 1;
+			overall_rc = 1; /* Indicate failure */
 		}
 	}
 
-	/* Flush stderr (silently handle errors) */
 	if (fflush(stderr) != 0) {
-		overall_rc = 1;
+		/* Potentially log this, but usually not fatal. */
+		overall_rc = 1; /* Consider if stderr flush failure warrants exit(1) */
 	}
 
 	return (overall_rc == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
