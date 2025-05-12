@@ -45,8 +45,14 @@ static void platform_setup(void) {
 		}
 	}
 #else
-	/* Ignore SIGPIPE to handle broken pipe gracefully */
-	signal(SIGPIPE, SIG_IGN);
+	/* Ignore SIGPIPE using sigaction */
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(struct sigaction));
+	sa.sa_handler = SIG_IGN;
+	if (sigaction(SIGPIPE, &sa, NULL) == -1) {
+		fprintf(stderr, "%s: sigaction failed to ignore SIGPIPE: %s\n", PROG_NAME, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 #endif
 }
 
