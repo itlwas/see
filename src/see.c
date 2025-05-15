@@ -9,10 +9,6 @@
 #include <errno.h>
 #include <signal.h>
 
-#ifndef EPIPE
-#define EPIPE 32 /* POSIX/standard value may vary; define fallback */
-#endif
-
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h> /* SetConsoleOutputCP */
@@ -87,12 +83,13 @@ static int copy_stream(FILE *in, const char *stream_name) {
 		/* Loop handles potential partial writes. */
 		while (written_total < bytes_read) {
 			written = fwrite(buffer + written_total, 1, bytes_read - written_total, stdout);
-			if (written == 0) {
-				/* fwrite returns 0 on error. Check errno. */
+			if (written == 0) { /* fwrite returns 0 on error. Check errno. */
+#ifdef EPIPE
 				if (errno == EPIPE) {
 					/* Broken pipe: reader closed connection. Not an error for 'see'. */
 					return 0; /* Treat as success */
 				}
+#endif
 				fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
 				return 1; /* Indicate failure */
 			}
