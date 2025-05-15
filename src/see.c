@@ -139,6 +139,7 @@ int main(int argc, char *argv[]) {
 	int files_processed = 0;
 	int i;                   /* C89 requires loop counter declaration at block start */
 	int overall_rc = 0;
+	int options_ended = 0;
 	/* stdout buffer for potential performance improvement. */
 	static unsigned char outbuf[BUFFER_SIZE];
 
@@ -150,16 +151,20 @@ int main(int argc, char *argv[]) {
 	}
 
 	for (i = 1; i < argc; ++i) {
-		if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-			usage(); /* Exits */
+		if (!options_ended) {
+			if (strcmp(argv[i], "--") == 0) {
+				options_ended = 1;
+				continue;
+			}
+			if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+				usage(); /* Exits */
+			}
+			if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+				version(); /* Exits */
+			}
 		}
-		else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-			version(); /* Exits */
-		}
-		else {
-			overall_rc |= process_path(argv[i]);
-			files_processed = 1;
-		}
+		overall_rc |= process_path(argv[i]);
+		files_processed = 1;
 	}
 
 	if (!files_processed) {
