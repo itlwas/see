@@ -46,8 +46,7 @@ static void platform_setup(void) {
 	sa.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &sa, NULL) == -1) {
 		fprintf(stderr, "%s: failed to ignore SIGPIPE: %s\n", PROG_NAME, strerror(errno));
-		/* Non-fatal, continue execution but signal handling might be unreliable. */
-		/* Consider exiting if strict POSIX behavior is critical. */
+		exit(EXIT_FAILURE);
 	}
 #endif
 }
