@@ -1,39 +1,80 @@
-# see - A Minimal, Cross-Platform `cat` Implementation
+# see
 
-`see` is a command-line utility designed as a superior alternative to the
-traditional `cat` command for concatenating files to standard output.
+A minimal, cross-platform file content display utility.
 
 ## Overview
 
-The core philosophy behind `see` is to create a tool that is extremely
-efficient, reliable, and resource-friendly. It handles both text and binary
-data flawlessly, emphasizing simplicity and robustness in its design and
-implementation.
+`see` is a command-line utility for concatenating and displaying file contents to standard output, designed as an alternative to the traditional `cat` command. It focuses on efficiency, reliability, and cross-platform compatibility.
 
-## Key Features
+## Features
 
-*   **High Performance:** Optimized for speed and efficient I/O operations.
-*   **Cross-Platform:** Compiles and runs on a wide range of operating systems
-    (including Windows, Linux, macOS) with any standard C compiler.
-*   **Minimal Binary Size:** Engineered to produce the smallest possible
-    executable.
-*   **Standard Input/Output:** Reads from specified files or standard input,
-    writing to standard output.
-*   **Binary Safe:** Correctly processes all types of data without modification.
-*   **Self-Contained:** Implemented in a single C source file with no external
-    dependencies beyond standard C libraries.
+- Efficient I/O operations with 64KB buffer optimization
+- Cross-platform compatibility (Windows, Linux, macOS)
+- Binary file support with no content modification
+- UTF-8 output handling on Windows
+- Proper binary mode I/O to prevent CRLF translation
+- Graceful handling of broken pipes
+- Self-contained implementation in a single C source file
 
-## Design Principles
+## Usage
 
-*   **Efficiency:** Prioritizing speed and minimal resource consumption through
-    optimized algorithms and I/O handling.
-*   **Reliability:** Robust error handling and predictable behavior across all
-    supported platforms and scenarios.
-*   **Minimalism:** A focused feature set, avoiding bloat and unnecessary
-    complexity.
-*   **Portability:** Adherence to C standards and careful consideration of
-    platform-specific details to ensure wide compatibility.
+```
+Usage: see [OPTION]... [FILE]...
+Concatenate FILE(s) to standard output.
+With no FILE, or when FILE is -, read standard input.
+
+Options:
+  -h, --help     display this help
+  -v, --version  output version information
+```
+
+## Examples
+
+Display a file:
+```
+see filename.txt
+```
+
+Concatenate multiple files:
+```
+see file1.txt file2.txt > combined.txt
+```
+
+Use as part of a pipeline:
+```
+see file.txt | grep "pattern"
+```
+
+## Installation
+
+### Build from Source
+
+Requirements:
+- C compiler supporting C89 standard
+- Make (optional)
+
+Using make:
+```
+make
+```
+
+Manual compilation:
+```
+gcc -std=c89 -D_FILE_OFFSET_BITS=64 -Wall -Wextra -O3 -s -o see src/see.c
+```
+
+## Implementation Details
+
+- Written in C89 for maximum compatibility
+- Uses optimal 64KB buffer size for disk I/O operations
+- Platform-specific adaptations for Windows and POSIX systems
+- Handles binary data correctly across platforms
+- Minimal binary size through careful optimization
 
 ## Documentation
 
-For full and detailed documentation, visit the [DeepWiki documentation](https://deepwiki.com/itlwas/see).
+For comprehensive documentation and a detailed explanation of how the code works, visit the [DeepWiki documentation](https://deepwiki.com/itlwas/see).
+
+## License
+
+Released under the MIT License. See [LICENSE](LICENSE) file for details.
