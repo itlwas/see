@@ -141,12 +141,10 @@ int main(int argc, char *argv[]) {
 	int i;                   /* C89 requires loop counter declaration at block start */
 	int overall_rc = 0;
 	int options_ended = 0;
-	/* stdout buffer for potential performance improvement. */
-	static unsigned char outbuf[BUFFER_SIZE];
 
 	platform_setup();
 
-	if (setvbuf(stdout, (char*)outbuf, _IOFBF, sizeof(outbuf)) != 0) {
+	if (setvbuf(stdout, NULL, _IOFBF, BUFFER_SIZE) != 0) {
 		/* Non-critical: proceed with default buffering. */
 		/* fprintf(stderr, "%s: warning: could not set stdout buffer\n", PROG_NAME); */
 	}
