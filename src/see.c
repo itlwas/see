@@ -146,7 +146,6 @@ int main(int argc, char *argv[]) {
 
 	if (setvbuf(stdout, NULL, _IOFBF, BUFFER_SIZE) != 0) {
 		/* Non-critical: proceed with default buffering. */
-		/* fprintf(stderr, "%s: warning: could not set stdout buffer\n", PROG_NAME); */
 	}
 
 	for (i = 1; i < argc; ++i) {
