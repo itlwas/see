@@ -3,7 +3,9 @@
  * High performance sequential file reader with binary data support.
  * Optimized for speed, minimal size, and broad compatibility (C89).
  */
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L /* For sigaction */
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
