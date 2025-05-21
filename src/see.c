@@ -90,6 +90,7 @@ static int copy_stream(FILE *in, const char *stream_name) {
 #ifdef EPIPE
 				if (errno == EPIPE) {
 					/* Broken pipe: reader closed connection. Not an error for 'see'. */
+					clearerr(stdout);
 					return 0; /* Treat as success */
 				}
 #endif
