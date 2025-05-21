@@ -84,7 +84,23 @@ static int copy_stream(FILE *in, const char *stream_name) {
 	size_t written_total;
 	size_t written;
 
-	while ((bytes_read = fread(buffer, 1, sizeof(buffer), in)) > 0) {
+	while (1) {
+		bytes_read = fread(buffer, 1, sizeof(buffer), in);
+		if (bytes_read == 0) {
+			if (feof(in)) {
+				break;
+			}
+			if (ferror(in)) {
+				if (errno == EINTR) {
+					clearerr(in);
+					continue; /* Retry interrupted read */
+				}
+				fprintf(stderr, "%s: read error on %s: %s\n", PROG_NAME, stream_name, strerror(errno));
+				return 1;
+			}
+			break; /* Treat unexpected zero read without error/EOF as EOF */
+		}
+
 		written_total = 0;
 		/* Loop handles potential partial writes. */
 		while (written_total < bytes_read) {
@@ -102,11 +118,6 @@ static int copy_stream(FILE *in, const char *stream_name) {
 			}
 			written_total += written;
 		}
-	}
-
-	if (ferror(in)) {
-		fprintf(stderr, "%s: read error on %s: %s\n", PROG_NAME, stream_name, strerror(errno));
-		return 1; /* Indicate failure */
 	}
 
 	return 0; /* Success */
