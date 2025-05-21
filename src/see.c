@@ -195,11 +195,19 @@ int main(int argc, char *argv[]) {
 		overall_rc |= process_path(NULL); /* NULL indicates stdin */
 	}
 
-	if (fflush(stdout) != 0) {
-		if (errno != EPIPE) { /* Ignore broken pipe, it's handled in copy_stream */
-			fprintf(stderr, "%s: flush error on stdout: %s\n", PROG_NAME, strerror(errno));
-			overall_rc = 1; /* Indicate failure */
+	while (fflush(stdout) != 0) {
+		/* EPIPE is not an error for 'see'; stdout considered closed. */
+		if (errno == EPIPE) {
+			clearerr(stdout); /* Clear error state. */
+			break;
 		}
+		if (errno == EINTR) {
+			clearerr(stdout); /* Clear error state. */
+			continue; /* Retry interrupted flush */
+		}
+		fprintf(stderr, "%s: flush error on stdout: %s\n", PROG_NAME, strerror(errno));
+		overall_rc = 1;
+		break;
 	}
 
 	if (fflush(stderr) != 0) {
