@@ -105,16 +105,26 @@ static int copy_stream(FILE *in, const char *stream_name) {
 		/* Loop handles potential partial writes. */
 		while (written_total < bytes_read) {
 			written = fwrite(buffer + written_total, 1, bytes_read - written_total, stdout);
-			if (written == 0) { /* fwrite returns 0 on error. Check errno. */
+			if (written == 0) { /* fwrite returns 0 on error or EOF. Check ferror and errno. */
+				if (ferror(stdout)) {
 #ifdef EPIPE
 				if (errno == EPIPE) {
 					/* Broken pipe: reader closed connection. Not an error for 'see'. */
 					clearerr(stdout);
-					return 0; /* Treat as success */
+					return 0;
 				}
 #endif
-				fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
-				return 1; /* Indicate failure */
+					if (errno == EINTR) {
+						clearerr(stdout);
+						continue; /* Retry interrupted write */
+					}
+					fprintf(stderr, "%s: write error: %s\n", PROG_NAME, strerror(errno));
+					return 1;
+				} else {
+					/* fwrite returned 0 but ferror is not set (e.g. EOF on stdout). */
+					fprintf(stderr, "%s: write error: unexpected zero write\n", PROG_NAME);
+					return 1;
+				}
 			}
 			written_total += written;
 		}
