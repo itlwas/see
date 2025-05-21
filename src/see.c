@@ -210,9 +210,15 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 
-	if (fflush(stderr) != 0) {
+	while (fflush(stderr) != 0) {
 		/* Potentially log this, but usually not fatal. */
+		if (errno == EINTR) {
+			clearerr(stderr); /* Clear error state. */
+			continue; /* Retry interrupted flush */
+		}
+		/* For other errors (e.g. EPIPE), cannot print error for failing stderr flush. */
 		overall_rc = 1; /* Consider if stderr flush failure warrants exit(1) */
+		break;
 	}
 
 	return (overall_rc == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
