@@ -27,7 +27,12 @@
 static void platform_setup(void) {
 #ifdef _WIN32
 	/* Ensure UTF-8 output on Windows console. */
-	SetConsoleOutputCP(CP_UTF8);
+	if (!SetConsoleOutputCP(CP_UTF8)) {
+		/* Non-fatal, but warn the user about potential display issues. */
+		fprintf(stderr, "%s: warning: failed to set console output to UTF-8 (error code: %lu)\n",
+		        PROG_NAME, GetLastError());
+		fflush(stderr);
+	}
 
 	/* Set stdin/stdout to binary mode to prevent CRLF translation. */
 	if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
