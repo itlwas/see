@@ -37,12 +37,10 @@ static void platform_setup(void) {
 	/* Set stdin/stdout to binary mode to prevent CRLF translation. */
 	if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
 		fprintf(stderr, "%s: stdin: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
-		fflush(stderr);
 		exit(EXIT_FAILURE);
 	}
 	if (_setmode(_fileno(stdout), _O_BINARY) == -1) {
 		fprintf(stderr, "%s: stdout: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
-		fflush(stderr);
 		exit(EXIT_FAILURE);
 	}
 #else
@@ -52,7 +50,6 @@ static void platform_setup(void) {
 	sa.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &sa, NULL) == -1) {
 		fprintf(stderr, "%s: failed to ignore SIGPIPE: %s\n", PROG_NAME, strerror(errno));
-		fflush(stderr);
 		exit(EXIT_FAILURE);
 	}
 #endif
