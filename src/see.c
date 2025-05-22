@@ -30,8 +30,7 @@ static void platform_setup(void) {
 	if (!SetConsoleOutputCP(CP_UTF8)) {
 		/* Non-fatal, but warn the user about potential display issues. */
 		fprintf(stderr, "%s: warning: failed to set console output to UTF-8 (error code: %lu)\n",
-		        PROG_NAME, GetLastError());
-		fflush(stderr);
+		        PROG_NAME, (unsigned long)GetLastError());
 	}
 
 	/* Set stdin/stdout to binary mode to prevent CRLF translation. */
