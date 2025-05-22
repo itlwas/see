@@ -42,6 +42,10 @@ static void platform_setup(void) {
 		fprintf(stderr, "%s: stdout: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	if (_setmode(_fileno(stderr), _O_BINARY) == -1) {
+		fprintf(stderr, "%s: stderr: failed to set binary mode: %s\n", PROG_NAME, strerror(errno));
+		exit(EXIT_FAILURE); /* Critical for consistent error reporting if redirected */
+	}
 #else
 	/* On POSIX, ignore SIGPIPE. Write errors (like EPIPE) are handled explicitly. */
 	struct sigaction sa;
