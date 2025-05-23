@@ -1,24 +1,15 @@
-# Executables / Build artifacts
+# Build artifacts
 see
 see.exe
 
 # Object files
 *.o
-*.obj
-
-# Dependency files
 *.d
 
-# IDE and editor specific files
+# Editor/IDE
 .vscode/
-.idea/
-*.suo
-*.user
 *.swp
-*.swo
 *~
-*.bak
 
-# OS generated files
+# System
 .DS_Store
-Thumbs.db
