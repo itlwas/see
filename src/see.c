@@ -56,15 +56,15 @@ static void platform_setup(void) {
 }
 
 static void usage(void) {
-    static const char *usage_text =
-        "Usage: %s [OPTION]... [FILE]...\n"
-        "Concatenate FILE(s) to standard output.\n"
-        "With no FILE, or when FILE is -, read standard input.\n\n"
-        "Options:\n"
-        "  -h, --help     display this help\n"
-        "  -v, --version  output version information\n";
-    fprintf(stdout, usage_text, PROG_NAME);
-    exit(EXIT_SUCCESS);
+	static const char *usage_text =
+		"Usage: %s [OPTION]... [FILE]...\n"
+		"Concatenate FILE(s) to standard output.\n"
+		"With no FILE, or when FILE is -, read standard input.\n\n"
+		"Options:\n"
+		"  -h, --help     display this help\n"
+		"  -v, --version  output version information\n";
+	fprintf(stdout, usage_text, PROG_NAME);
+	exit(EXIT_SUCCESS);
 }
 
 static void version(void) {
@@ -103,11 +103,11 @@ static int copy_stream(FILE *in, const char *stream_name) {
 			if (written == 0) {
 				if (ferror(stdout)) {
 #ifdef EPIPE
-				if (errno == EPIPE) {
-					/* Broken pipe is normal termination for utilities */
-					clearerr(stdout);
-					return 0;
-				}
+					if (errno == EPIPE) {
+						/* Broken pipe is normal termination for utilities */
+						clearerr(stdout);
+						return 0;
+					}
 #endif
 					if (errno == EINTR) {
 						clearerr(stdout);
