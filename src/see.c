@@ -165,6 +165,8 @@ int main(int argc, char *argv[]) {
 	/* Full buffering improves performance for large outputs */
 	if (setvbuf(stdout, s_stdout_buf, _IOFBF, sizeof(s_stdout_buf)) != 0) {
 		/* Non-critical failure */
+		fprintf(stderr, "%s: warning: failed to set full buffering on stdout: %s\n",
+		        PROG_NAME, strerror(errno));
 	}
 
 	for (i = 1; i < argc; ++i) {
