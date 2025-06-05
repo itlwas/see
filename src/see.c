@@ -153,7 +153,7 @@ static int process_path(const char *path) {
 	return status;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, const char *argv[]) {
 	int files_processed = 0;
 	int i; /* C89 requires declaration at block start */
 	int overall_rc = 0;
