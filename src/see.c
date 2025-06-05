@@ -56,7 +56,7 @@ static void platform_setup(void) {
 }
 
 static void usage(void) {
-	static const char *usage_text =
+	static const char usage_text[] =
 		"Usage: %s [OPTION]... [FILE]...\n"
 		"Concatenate FILE(s) to standard output.\n"
 		"With no FILE, or when FILE is -, read standard input.\n\n"
