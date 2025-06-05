@@ -46,7 +46,7 @@ static void platform_setup(void) {
 #else
 	/* Ignore SIGPIPE - handle EPIPE explicitly for robustness */
 	struct sigaction sa;
-	memset(&sa, 0, sizeof(struct sigaction));
+	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &sa, NULL) == -1) {
 		fprintf(stderr, "%s: failed to ignore SIGPIPE: %s\n", PROG_NAME, strerror(errno));
