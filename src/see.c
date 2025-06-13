@@ -176,19 +176,24 @@ int main(int argc, const char *argv[]) {
 	}
 
 	for (i = 1; i < argc; ++i) {
-		if (!options_ended) {
-			if (strcmp(argv[i], "--") == 0) {
+		const char *arg = argv[i];
+		int is_filepath = 1;
+
+		if (!options_ended && arg[0] == '-') {
+			if (strcmp(arg, "--") == 0) {
 				options_ended = 1;
-				continue;
-			}
-			if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+				is_filepath = 0;
+			} else if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
 				usage();
-			} else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+			} else if (strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0) {
 				version();
 			}
 		}
-		overall_rc |= process_path(argv[i]);
-		files_processed = 1;
+
+		if (is_filepath) {
+			overall_rc |= process_path(arg);
+			files_processed = 1;
+		}
 	}
 
 	if (!files_processed) {
