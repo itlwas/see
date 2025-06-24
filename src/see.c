@@ -130,7 +130,6 @@ static int copy_stream(FILE *in, const char *stream_name) {
 static int process_path(const char *path) {
 	FILE *input_file;
 	int status = 0;
-	static char file_buf[BUFFER_SIZE];
 
 	if (path == NULL || strcmp(path, "-") == 0) {
 		return copy_stream(stdin, "stdin");
@@ -142,7 +141,7 @@ static int process_path(const char *path) {
 		return 1;
 	}
 
-	if (setvbuf(input_file, file_buf, _IOFBF, sizeof(file_buf)) != 0) {
+	if (setvbuf(input_file, NULL, _IOFBF, BUFFER_SIZE) != 0) {
 		fprintf(stderr, "%s: %s: warning: failed to set full buffering: %s\n",
 		        PROG_NAME, path, strerror(errno));
 	}
@@ -164,12 +163,10 @@ int main(int argc, const char *argv[]) {
 	int i; /* C89 requires declaration at block start */
 	int overall_rc = 0;
 	int options_ended = 0;
-	static char s_stdout_buf[BUFFER_SIZE];
 
 	platform_setup();
 
-	/* Full buffering improves performance for large outputs */
-	if (setvbuf(stdout, s_stdout_buf, _IOFBF, sizeof(s_stdout_buf)) != 0) {
+	if (setvbuf(stdout, NULL, _IOFBF, BUFFER_SIZE) != 0) {
 		/* Non-critical failure */
 		fprintf(stderr, "%s: warning: failed to set full buffering on stdout: %s\n",
 		        PROG_NAME, strerror(errno));
