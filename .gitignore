@@ -1,0 +1,15 @@
+# Build artifacts
+see
+see.exe
+
+# Object files
+*.o
+*.d
+
+# Editor/IDE
+.vscode/
+*.swp
+*~
+
+# System
+.DS_Store
