@@ -4,8 +4,10 @@
  * Optimized for speed, minimal size, and broad compatibility (C89).
  */
 
+#ifndef _WIN32
 #ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L /* For sigaction on POSIX */
+#define _POSIX_C_SOURCE 200809L /* For sigaction() on POSIX */
+#endif
 #endif
 
 #include <errno.h>
@@ -69,6 +71,8 @@ static void platform_setup(void) {
 
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = SIG_IGN;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
     if (sigaction(SIGPIPE, &sa, NULL) == -1) {
         err = errno;
         fprintf(stderr, "%s: failed to ignore SIGPIPE: %s\n",
@@ -88,12 +92,14 @@ static void usage(void) {
         "  -h, --help     display this help\n"
         "  -v, --version  output version information\n";
     fprintf(stdout, usage_text, PROG_NAME);
+    (void)flush_stream(stdout, "stdout", 1);
     exit(EXIT_SUCCESS);
 }
 
 /* Print version and exit successfully. */
 static void version(void) {
     printf("%s %s\n", PROG_NAME, VERSION);
+    (void)flush_stream(stdout, "stdout", 1);
     exit(EXIT_SUCCESS);
 }
 
