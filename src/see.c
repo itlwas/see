@@ -31,9 +31,9 @@
 static void platform_setup(void);
 static void usage(void);
 static void version(void);
+static int  flush_stream(FILE *s, const char *name, int treat_epipe_as_ok);
 static int  copy_stream(FILE *in, const char *stream_name);
 static int  process_path(const char *path);
-static int  flush_stream(FILE *s, const char *name, int handle_epipe);
 
 /* Platform-specific initialization. Exits on unrecoverable failures. */
 static void platform_setup(void) {
@@ -106,7 +106,7 @@ static void version(void) {
 /* Robust fflush with EINTR and optional EPIPE handling.
  * Returns 0 on success (including EPIPE handled as non-error), 1 on error.
  * If 'name' is NULL, suppresses error messages (used for stderr). */
-static int flush_stream(FILE *s, const char *name, int handle_epipe) {
+static int flush_stream(FILE *s, const char *name, int treat_epipe_as_ok) {
     int err;
 
     for (;;) {
@@ -120,7 +120,7 @@ static int flush_stream(FILE *s, const char *name, int handle_epipe) {
             continue;
         }
 
-        if (handle_epipe) {
+        if (treat_epipe_as_ok) {
 #ifdef EPIPE
             if (err == EPIPE) {
                 clearerr(s);
@@ -143,8 +143,6 @@ static int copy_stream(FILE *in, const char *stream_name) {
     /* Static buffer avoids stack pressure and malloc overhead. */
     static unsigned char buffer[BUFFER_SIZE];
     size_t bytes_read;
-    size_t written_total;
-    size_t written;
 
     for (;;) {
         bytes_read = fread(buffer, 1, sizeof(buffer), in);
@@ -167,34 +165,39 @@ static int copy_stream(FILE *in, const char *stream_name) {
         }
 
         /* Handle partial writes - critical for pipes and slow devices. */
-        written_total = 0;
-        while (written_total < bytes_read) {
-            written = fwrite(buffer + written_total, 1,
-                             bytes_read - written_total, stdout);
-            if (written == 0) {
-                if (ferror(stdout)) {
-                    int err = errno;
+        {
+            size_t written_total = 0;
+            size_t written;
+
+            while (written_total < bytes_read) {
+                written = fwrite(buffer + written_total, 1,
+                                 bytes_read - written_total, stdout);
+                if (written == 0) {
+                    if (ferror(stdout)) {
+                        int err = errno;
 #ifdef EPIPE
-                    if (err == EPIPE) {
-                        /* Broken pipe is normal termination for utilities. */
-                        clearerr(stdout);
-                        return 0;
-                    }
+                        if (err == EPIPE) {
+                            /* Broken pipe is normal termination for utilities. */
+                            clearerr(stdout);
+                            return 0;
+                        }
 #endif
-                    if (err == EINTR) {
-                        clearerr(stdout);
-                        continue;
+                        if (err == EINTR) {
+                            clearerr(stdout);
+                            continue;
+                        }
+                        fprintf(stderr, "%s: write error: %s\n",
+                                PROG_NAME, strerror(err));
+                        return 1;
+                    } else {
+                        fprintf(stderr, "%s: write error: unexpected zero write\n",
+                                PROG_NAME);
+                        return 1;
                     }
-                    fprintf(stderr, "%s: write error: %s\n",
-                            PROG_NAME, strerror(err));
-                    return 1;
                 } else {
-                    fprintf(stderr, "%s: write error: unexpected zero write\n",
-                            PROG_NAME);
-                    return 1;
+                    written_total += written;
                 }
             }
-            written_total += written;
         }
     }
 
