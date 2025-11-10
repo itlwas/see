@@ -31,9 +31,9 @@
 static void platform_setup(void);
 static void usage(void);
 static void version(void);
-static int  flush_stream(FILE *s, const char *name, int treat_epipe_as_ok);
-static int  copy_stream(FILE *in, const char *stream_name);
-static int  process_path(const char *path);
+static int  flush_stream(FILE *stream, const char *stream_name, int treat_broken_pipe_as_success);
+static int  copy_stream(FILE *input_stream, const char *input_name);
+static int  process_path(const char *file_path);
 
 /* Platform-specific initialization. Exits on unrecoverable failures. */
 static void platform_setup(void) {
@@ -105,59 +105,61 @@ static void version(void) {
 
 /* Robust fflush with EINTR and optional EPIPE handling.
  * Returns 0 on success (including EPIPE handled as non-error), 1 on error.
- * If 'name' is NULL, suppresses error messages (used for stderr). */
-static int flush_stream(FILE *s, const char *name, int treat_epipe_as_ok) {
+ * If 'stream_name' is NULL, suppresses error messages (used for stderr). */
+static int flush_stream(FILE *stream, const char *stream_name, int treat_broken_pipe_as_success) {
     int err;
 
     for (;;) {
-        if (fflush(s) == 0) {
+        if (fflush(stream) == 0) {
             return 0;
         }
 
         err = errno;
         if (err == EINTR) {
-            clearerr(s);
+            clearerr(stream);
             continue;
         }
 
-        if (treat_epipe_as_ok) {
+        if (treat_broken_pipe_as_success) {
 #ifdef EPIPE
             if (err == EPIPE) {
-                clearerr(s);
+                clearerr(stream);
                 return 0; /* Treat broken pipe as normal termination. */
             }
 #endif
         }
 
-        if (name != NULL) {
+        if (stream_name != NULL) {
             fprintf(stderr, "%s: flush error on %s: %s\n",
-                    PROG_NAME, name, strerror(err));
+                    PROG_NAME, stream_name, strerror(err));
         }
         return 1;
     }
 }
 
-/* Copy all data from 'in' to stdout. Returns 0 on success, 1 on error.
- * 'stream_name' is used for diagnostics. */
-static int copy_stream(FILE *in, const char *stream_name) {
+/* Copy all data from 'input_stream' to stdout. Returns 0 on success, 1 on error.
+ * 'input_name' is used for diagnostics. */
+static int copy_stream(FILE *input_stream, const char *input_name) {
     /* Static buffer avoids stack pressure and malloc overhead. */
     static unsigned char buffer[BUFFER_SIZE];
     size_t bytes_read;
+    size_t total_bytes_written;
+    size_t bytes_written;
 
     for (;;) {
-        bytes_read = fread(buffer, 1, sizeof(buffer), in);
+        bytes_read = fread(buffer, 1, sizeof(buffer), input_stream);
         if (bytes_read == 0) {
-            if (feof(in)) {
+            if (feof(input_stream)) {
                 break;
             }
-            if (ferror(in)) {
+            if (ferror(input_stream)) {
                 int err = errno;
                 if (err == EINTR) {
-                    clearerr(in);
+                    clearerr(input_stream);
                     continue;
                 }
                 fprintf(stderr, "%s: read error on %s: %s\n",
-                        PROG_NAME, stream_name, strerror(err));
+                        PROG_NAME, input_name, strerror(err));
                 return 1;
             }
             /* Zero read without error/EOF treated as EOF. */
@@ -165,38 +167,34 @@ static int copy_stream(FILE *in, const char *stream_name) {
         }
 
         /* Handle partial writes - critical for pipes and slow devices. */
-        {
-            size_t total_bytes_written = 0;
-            size_t bytes_written;
-
-            while (total_bytes_written < bytes_read) {
-                bytes_written = fwrite(buffer + total_bytes_written, 1,
-                                       bytes_read - total_bytes_written, stdout);
-                if (bytes_written == 0) {
-                    if (ferror(stdout)) {
-                        int err = errno;
+        total_bytes_written = 0;
+        while (total_bytes_written < bytes_read) {
+            bytes_written = fwrite(buffer + total_bytes_written, 1,
+                                   bytes_read - total_bytes_written, stdout);
+            if (bytes_written == 0) {
+                if (ferror(stdout)) {
+                    int err = errno;
 #ifdef EPIPE
-                        if (err == EPIPE) {
-                            /* Broken pipe is normal termination for utilities. */
-                            clearerr(stdout);
-                            return 0;
-                        }
-#endif
-                        if (err == EINTR) {
-                            clearerr(stdout);
-                            continue;
-                        }
-                        fprintf(stderr, "%s: write error on stdout: %s\n",
-                                PROG_NAME, strerror(err));
-                        return 1;
-                    } else {
-                        fprintf(stderr, "%s: write error on stdout: unexpected zero write\n",
-                                PROG_NAME);
-                        return 1;
+                    if (err == EPIPE) {
+                        /* Broken pipe is normal termination for utilities. */
+                        clearerr(stdout);
+                        return 0;
                     }
+#endif
+                    if (err == EINTR) {
+                        clearerr(stdout);
+                        continue;
+                    }
+                    fprintf(stderr, "%s: write error on stdout: %s\n",
+                            PROG_NAME, strerror(err));
+                    return 1;
                 } else {
-                    total_bytes_written += bytes_written;
+                    fprintf(stderr, "%s: write error on stdout: unexpected zero write\n",
+                            PROG_NAME);
+                    return 1;
                 }
+            } else {
+                total_bytes_written += bytes_written;
             }
         }
     }
@@ -205,36 +203,36 @@ static int copy_stream(FILE *in, const char *stream_name) {
 }
 
 /* Process a path or stdin ("-" or NULL). Returns 0 on success, 1 on error. */
-static int process_path(const char *path) {
+static int process_path(const char *file_path) {
     FILE *input_file;
     int status = 0;
     static char file_buf[BUFFER_SIZE];
 
-    if (path == NULL || strcmp(path, "-") == 0) {
+    if (file_path == NULL || strcmp(file_path, "-") == 0) {
         return copy_stream(stdin, "stdin");
     }
 
-    input_file = fopen(path, "rb");
+    input_file = fopen(file_path, "rb");
     if (!input_file) {
         int err = errno;
-        fprintf(stderr, "%s: %s: %s\n", PROG_NAME, path, strerror(err));
+        fprintf(stderr, "%s: %s: %s\n", PROG_NAME, file_path, strerror(err));
         return 1;
     }
 
     if (setvbuf(input_file, file_buf, _IOFBF, sizeof(file_buf)) != 0) {
         int err = errno;
         fprintf(stderr, "%s: %s: warning: failed to set full buffering: %s\n",
-                PROG_NAME, path, strerror(err));
+                PROG_NAME, file_path, strerror(err));
     }
 
-    if (copy_stream(input_file, path) != 0) {
+    if (copy_stream(input_file, file_path) != 0) {
         status = 1;
     }
 
     if (fclose(input_file) != 0) {
         int err = errno;
         fprintf(stderr, "%s: %s: close error: %s\n",
-                PROG_NAME, path, strerror(err));
+                PROG_NAME, file_path, strerror(err));
         status = 1;
     }
 
