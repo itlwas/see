@@ -91,7 +91,7 @@ static void usage(void) {
         "Options:\n"
         "  -h, --help     display this help\n"
         "  -v, --version  output version information\n";
-    fprintf(stdout, usage_text, PROG_NAME);
+    printf(usage_text, PROG_NAME);
     (void)flush_stream(stdout, "stdout", 1);
     exit(EXIT_SUCCESS);
 }
@@ -166,13 +166,13 @@ static int copy_stream(FILE *in, const char *stream_name) {
 
         /* Handle partial writes - critical for pipes and slow devices. */
         {
-            size_t written_total = 0;
-            size_t written;
+            size_t total_bytes_written = 0;
+            size_t bytes_written;
 
-            while (written_total < bytes_read) {
-                written = fwrite(buffer + written_total, 1,
-                                 bytes_read - written_total, stdout);
-                if (written == 0) {
+            while (total_bytes_written < bytes_read) {
+                bytes_written = fwrite(buffer + total_bytes_written, 1,
+                                       bytes_read - total_bytes_written, stdout);
+                if (bytes_written == 0) {
                     if (ferror(stdout)) {
                         int err = errno;
 #ifdef EPIPE
@@ -195,7 +195,7 @@ static int copy_stream(FILE *in, const char *stream_name) {
                         return 1;
                     }
                 } else {
-                    written_total += written;
+                    total_bytes_written += bytes_written;
                 }
             }
         }
