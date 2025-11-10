@@ -186,11 +186,11 @@ static int copy_stream(FILE *in, const char *stream_name) {
                             clearerr(stdout);
                             continue;
                         }
-                        fprintf(stderr, "%s: write error: %s\n",
+                        fprintf(stderr, "%s: write error on stdout: %s\n",
                                 PROG_NAME, strerror(err));
                         return 1;
                     } else {
-                        fprintf(stderr, "%s: write error: unexpected zero write\n",
+                        fprintf(stderr, "%s: write error on stdout: unexpected zero write\n",
                                 PROG_NAME);
                         return 1;
                     }
