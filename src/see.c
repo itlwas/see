@@ -31,7 +31,8 @@
 static void platform_setup(void);
 static void usage(void);
 static void version(void);
-static int  flush_stream(FILE *stream, const char *stream_name, int treat_broken_pipe_as_success);
+static int  flush_stream(FILE *stream, const char *stream_name,
+                         int treat_broken_pipe_as_success);
 static int  copy_stream(FILE *input_stream, const char *input_name);
 static int  process_path(const char *file_path);
 
@@ -106,7 +107,8 @@ static void version(void) {
 /* Robust fflush with EINTR and optional EPIPE handling.
  * Returns 0 on success (including EPIPE handled as non-error), 1 on error.
  * If 'stream_name' is NULL, suppresses error messages (used for stderr). */
-static int flush_stream(FILE *stream, const char *stream_name, int treat_broken_pipe_as_success) {
+static int flush_stream(FILE *stream, const char *stream_name,
+                        int treat_broken_pipe_as_success) {
     int err;
 
     for (;;) {
