@@ -86,20 +86,20 @@ static void platform_setup(void) {
 /* Print usage and exit successfully. */
 static void usage(void) {
     static const char usage_text[] =
-        "Usage: %s [OPTION]... [FILE]...\n"
+        "Usage: " PROG_NAME " [OPTION]... [FILE]...\n"
         "Concatenate FILE(s) to standard output.\n"
         "With no FILE, or when FILE is -, read standard input.\n\n"
         "Options:\n"
         "  -h, --help     display this help\n"
         "  -v, --version  output version information\n";
-    printf(usage_text, PROG_NAME);
+    fputs(usage_text, stdout);
     (void)flush_stream(stdout, "stdout", 1);
     exit(EXIT_SUCCESS);
 }
 
 /* Print version and exit successfully. */
 static void version(void) {
-    printf("%s %s\n", PROG_NAME, VERSION);
+    fputs(PROG_NAME " " VERSION "\n", stdout);
     (void)flush_stream(stdout, "stdout", 1);
     exit(EXIT_SUCCESS);
 }
