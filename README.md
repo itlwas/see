@@ -6,15 +6,19 @@ Fast, portable file display utility (a minimal, robust alternative to `cat`).
 
 - Requirements: `make`, a C compiler
 - Build:
-  ```
+
+  ```sh
   make build
   ```
+
 - Clean:
-  ```
+
+  ```sh
   make clean
   ```
 
 ## Usage
+
 ```powershell
 Usage: see [OPTION]... [FILE]...
 Concatenate FILE(s) to standard output.
