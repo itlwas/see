@@ -41,9 +41,10 @@ static void platform_setup(void) {
 #ifdef _WIN32
     /* Best-effort UTF-8 console; failure is non-fatal. */
     if (!SetConsoleOutputCP(CP_UTF8)) {
+        DWORD werr = GetLastError();
         fprintf(stderr,
                 "%s: warning: failed to set console output to UTF-8 (error code: %lu)\n",
-                PROG_NAME, (unsigned long)GetLastError());
+                PROG_NAME, (unsigned long)werr);
     }
 
     /* Binary mode prevents CRLF translation corruption. */
@@ -68,14 +69,13 @@ static void platform_setup(void) {
 #else
     /* Ignore SIGPIPE - handle EPIPE explicitly for robustness. */
     struct sigaction sa;
-    int err;
 
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = SIG_IGN;
     sa.sa_flags = 0;
     sigemptyset(&sa.sa_mask);
     if (sigaction(SIGPIPE, &sa, NULL) == -1) {
-        err = errno;
+        int err = errno;
         fprintf(stderr, "%s: failed to ignore SIGPIPE: %s\n",
                 PROG_NAME, strerror(err));
         exit(EXIT_FAILURE);
@@ -233,7 +233,7 @@ static int process_path(const char *file_path) {
 
     if (fclose(input_file) != 0) {
         int err = errno;
-        fprintf(stderr, "%s: %s: close error: %s\n",
+        fprintf(stderr, "%s: close error on %s: %s\n",
                 PROG_NAME, file_path, strerror(err));
         status = 1;
     }
