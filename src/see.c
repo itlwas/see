@@ -18,16 +18,15 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h> /* SetConsoleOutputCP */
-#include <io.h>      /* _setmode, _fileno */
-#include <fcntl.h>   /* _O_BINARY */
+#include <windows.h>
+#include <io.h>
+#include <fcntl.h>
 #endif
 
 #define PROG_NAME   "see"
 #define VERSION     "v1.0"
 #define BUFFER_SIZE (64 * 1024) /* 64KB: good disk I/O sweet spot */
 
-/* Forward declarations */
 static void platform_setup(void);
 static void usage(void);
 static void version(void);
@@ -36,10 +35,10 @@ static int  flush_stream(FILE *stream, const char *stream_name,
 static int  copy_stream(FILE *input_stream, const char *input_name);
 static int  process_path(const char *file_path);
 
-/* Platform-specific initialization. Exits on unrecoverable failures. */
+/* Sets up platform-specific I/O and signal handling; exits on fatal errors. */
 static void platform_setup(void) {
 #ifdef _WIN32
-    /* Best-effort UTF-8 console; failure is non-fatal. */
+    /* Attempt to set the console output code page to UTF-8; on failure, warn and continue. */
     if (!SetConsoleOutputCP(CP_UTF8)) {
         DWORD werr = GetLastError();
         fprintf(stderr,
@@ -47,7 +46,8 @@ static void platform_setup(void) {
                 PROG_NAME, (unsigned long)werr);
     }
 
-    /* Binary mode prevents CRLF translation corruption. */
+    /* Force binary mode for stdin, stdout, and stderr on Windows:
+    disables LF<->CRLF conversion and ^Z as EOF, preserves exact byte I/O. */
     if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
         int err = errno;
         fprintf(stderr, "%s: stdin: failed to set binary mode: %s\n",
@@ -67,7 +67,7 @@ static void platform_setup(void) {
         exit(EXIT_FAILURE);
     }
 #else
-    /* Ignore SIGPIPE - handle EPIPE explicitly for robustness. */
+    /* Ignore SIGPIPE so writes return EPIPE for explicit handling. */
     struct sigaction sa;
 
     memset(&sa, 0, sizeof(sa));
@@ -83,7 +83,6 @@ static void platform_setup(void) {
 #endif
 }
 
-/* Print usage and exit successfully. */
 static void usage(void) {
     static const char usage_text[] =
         "Usage: " PROG_NAME " [OPTION]... [FILE]...\n"
@@ -97,7 +96,6 @@ static void usage(void) {
     exit(EXIT_SUCCESS);
 }
 
-/* Print version and exit successfully. */
 static void version(void) {
     fputs(PROG_NAME " " VERSION "\n", stdout);
     (void)flush_stream(stdout, "stdout", 1);
@@ -243,7 +241,7 @@ static int process_path(const char *file_path) {
 
 int main(int argc, char *argv[]) {
     int files_processed = 0;
-    int i; /* C89 requires declaration at block start. */
+    int i;
     int overall_rc = 0;
     int options_ended = 0;
     static char stdout_buf[BUFFER_SIZE];
@@ -252,7 +250,7 @@ int main(int argc, char *argv[]) {
 
     /* Full buffering improves performance for large outputs. */
     if (setvbuf(stdout, stdout_buf, _IOFBF, sizeof(stdout_buf)) != 0) {
-        int err = errno; /* Non-critical failure. */
+        int err = errno;
         fprintf(stderr, "%s: warning: failed to set full buffering on stdout: %s\n",
                 PROG_NAME, strerror(err));
     }
@@ -266,9 +264,9 @@ int main(int argc, char *argv[]) {
                 options_ended = 1;
                 is_filepath = 0;
             } else if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
-                usage();   /* no return */
+                usage();
             } else if (strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0) {
-                version(); /* no return */
+                version();
             }
         }
 
@@ -282,7 +280,7 @@ int main(int argc, char *argv[]) {
         overall_rc |= process_path(NULL);
     }
 
-    /* Explicit flush with EINTR and optional EPIPE handling. */
+    /* Final flush: retry on EINTR; treat EPIPE on stdout as success. */
     overall_rc |= flush_stream(stdout, "stdout", 1);
     overall_rc |= flush_stream(stderr, NULL, 0); /* Cannot report to stderr. */
 
