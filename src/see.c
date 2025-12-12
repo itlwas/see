@@ -24,7 +24,7 @@
 #endif
 
 #define PROG_NAME   "see"
-#define VERSION     "v1.0"
+#define VERSION     "1.0"
 #define BUFFER_SIZE (64 * 1024) /* 64KB: good disk I/O sweet spot */
 
 static void platform_setup(void);
@@ -85,7 +85,7 @@ static void platform_setup(void) {
 
 static void usage(void) {
     static const char usage_text[] =
-        "Usage: " PROG_NAME " [OPTION]... [FILE]...\n"
+        "Usage: " PROG_NAME " [OPTION]... [FILE]...\n\n"
         "Concatenate FILE(s) to standard output.\n"
         "With no FILE, or when FILE is -, read standard input.\n\n"
         "Options:\n"
@@ -97,7 +97,7 @@ static void usage(void) {
 }
 
 static void version(void) {
-    fputs(PROG_NAME " " VERSION "\n", stdout);
+    fputs(PROG_NAME " v" VERSION "\n", stdout);
     (void)flush_stream(stdout, "stdout", 1);
     exit(EXIT_SUCCESS);
 }
