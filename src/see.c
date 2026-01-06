@@ -47,7 +47,7 @@ static void platform_setup(void) {
     }
 
     /* Force binary mode for stdin, stdout, and stderr on Windows:
-    disables LF<->CRLF conversion and ^Z as EOF, preserves exact byte I/O. */
+     * disables LF<->CRLF conversion and ^Z as EOF, preserves exact byte I/O. */
     if (_setmode(_fileno(stdin), _O_BINARY) == -1) {
         int err = errno;
         fprintf(stderr, "%s: stdin: failed to set binary mode: %s\n",
