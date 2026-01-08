@@ -38,11 +38,13 @@ static int  process_path(const char *file_path);
 /* Sets up platform-specific I/O and signal handling; exits on fatal errors. */
 static void platform_setup(void) {
 #ifdef _WIN32
-    /* Attempt to set the console output code page to UTF-8; on failure, warn and continue. */
+    /* Attempt to set the console output code page to UTF-8; on failure, warn
+     * and continue. */
     if (!SetConsoleOutputCP(CP_UTF8)) {
         DWORD werr = GetLastError();
         fprintf(stderr,
-                "%s: warning: failed to set console output to UTF-8 (error code: %lu)\n",
+                "%s: warning: failed to set console output to UTF-8 "
+                "(error code: %lu)\n",
                 PROG_NAME, (unsigned long)werr);
     }
 
@@ -137,7 +139,8 @@ static int flush_stream(FILE *stream, const char *stream_name,
     }
 }
 
-/* Copy all data from 'input_stream' to stdout. Returns 0 on success, 1 on error.
+/* Copy all data from 'input_stream' to stdout.
+ * Returns 0 on success, 1 on error.
  * 'input_name' is used for diagnostics. */
 static int copy_stream(FILE *input_stream, const char *input_name) {
     /* Static buffer avoids stack pressure and malloc overhead. */
@@ -189,7 +192,9 @@ static int copy_stream(FILE *input_stream, const char *input_name) {
                             PROG_NAME, strerror(err));
                     return 1;
                 } else {
-                    fprintf(stderr, "%s: write error on stdout: unexpected zero write\n",
+                    fprintf(stderr,
+                            "%s: write error on stdout: unexpected zero "
+                            "write\n",
                             PROG_NAME);
                     return 1;
                 }
@@ -251,7 +256,8 @@ int main(int argc, char *argv[]) {
     /* Full buffering improves performance for large outputs. */
     if (setvbuf(stdout, stdout_buf, _IOFBF, sizeof(stdout_buf)) != 0) {
         int err = errno;
-        fprintf(stderr, "%s: warning: failed to set full buffering on stdout: %s\n",
+        fprintf(stderr,
+                "%s: warning: failed to set full buffering on stdout: %s\n",
                 PROG_NAME, strerror(err));
     }
 
